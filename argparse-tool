@@ -1,0 +1,140 @@
+#!/usr/bin/python3
+
+import sys, os, argparse, importlib
+from argparse_tool import utils, zsh, bash, fish, printf, man, markdown
+
+p = argparse.ArgumentParser('argany', 'Generate shell completions and documentation using python argparse')
+p.add_argument('action')
+p.add_argument('program')
+p.add_argument('--parser_variable', default=None, help='Specify parser variable')
+p.add_argument('-o', '--output',    default=None, help='Destination file [default: stdout]')
+p.add_argument('--program_name',    default=None, help='Program name')
+
+# We use an unique object name for avoinding name clashes when
+# importing/executing the foreign python script
+_argany_argument_parser = p
+del p
+
+def close_output_streams():
+    f = open(os.devnull, 'w')
+    sys.stdout = f
+    sys.stderr = f
+
+def restore_output_streams():
+    sys.stdout = sys.__stdout__
+    sys.stderr = sys.__stderr__
+
+def find_ArgumentParser(module):
+    found_parsers = []
+
+    for obj_name in dir(module):
+        obj = getattr(module, obj_name)
+        if isinstance(obj, argparse.ArgumentParser) and obj is not _argany_argument_parser:
+            found_parsers.append(obj)
+
+    if len(found_parsers) == 1:
+        return found_parsers[0]
+    elif len(found_parsers) > 1:
+        # Find root parser
+        # TODO: this doesn't work well with multiple subcommands ("prog cmd1 cmd2")
+        for parser in found_parsers:
+            if parser._subparsers is not None:
+                return parser
+
+    return None
+
+def execute_file(file):
+    # "Import" file using exec
+
+    import __main__
+
+    close_output_streams()
+
+    with open(file, 'r') as fh:
+        source = fh.read()
+        compiled = compile(source, file, 'exec')
+        try:   exec(compiled, globals())
+        except SystemExit: pass
+
+    restore_output_streams()
+
+    return __main__
+
+def import_file(file):
+    # Import file using importlib
+
+    directory, file = os.path.split(file)
+    if file.endswith('.py'):
+        file = file[:-3]
+    if not directory:
+        directory = '.'
+    if directory not in sys.path:
+        sys.path.append(directory)
+    return importlib.import_module(file)
+
+def generate(opts):
+    try:
+        module = import_file(opts.program)
+    except Exception as e:
+        print("Warning: failed to load file using importlib, falling back to `exec`", file=sys.stderr)
+        module = execute_file(opts.program)
+
+    #directory, file = os.path.split(opts.program)
+    #if file.endswith('.py'):
+    #    file = file[:-3]
+    #if not directory:
+    #    directory = '.'
+    #if directory not in sys.path:
+    #    sys.path.append(directory)
+    #module = importlib.import_module(file)
+
+    if opts.parser_variable:
+        parser = getattr(module, opts.parser_variable)
+    else:
+        parser = find_ArgumentParser(module)
+
+    if parser is None:
+        print("Could not get ArgumentParser object from module", opts.program, file=sys.stderr)
+        sys.exit(1)
+
+    if opts.program_name is None:
+        opts.program_name = parser.prog
+
+    utils.add_help_to_subparsers(parser)
+
+    r = {
+        'bash':     bash.generate_completion,
+        'fish':     fish.generate_completion,
+        'zsh':      zsh.generate_completion,
+        'man':      man.generate_man,
+        'printf':   printf.generate_printf_usage,
+        'markdown': markdown.generate_markdown,
+    }[opts.action](parser, opts.program_name)
+
+    if opts.output is not None:
+        with open(opts.output, 'w') as fh:
+            fh.write(r)
+    else:
+        print(r)
+
+commands = [[]]
+for arg in sys.argv[1:]:
+    if arg == ';':
+        commands.append([])
+    else:
+        commands[-1].append(arg)
+commands = [cmd for cmd in commands if len(cmd)]
+
+exit = 0
+for cmd in commands:
+    opts = None
+    try:
+        opts = _argany_argument_parser.parse_args(cmd)
+        generate(opts)
+    except Exception as e:
+        print('Error:', e, file=sys.stderr)
+        print('Opts:', opts, file=sys.stderr)
+        raise
+        exit = 1
+sys.exit(exit)
+
