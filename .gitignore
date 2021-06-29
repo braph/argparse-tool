@@ -2,3 +2,4 @@ test/
 build/
 dist/
 argparse_tool.egg-info/
+argparse_tool/__pycache__/
