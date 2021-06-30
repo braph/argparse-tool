@@ -78,16 +78,16 @@ class BashCompleter(shell.ShellCompleter):
         return compgen('-A variable')
 
 
-_bash_complete = BashCompleter().complete
+complete = BashCompleter().complete
 
-def _bash_complete_action(action, append=True):
-    r = _bash_complete(*shell.action_get_completer(action))
+def complete_action(action, append=True):
+    r = complete(*shell.action_get_completer(action))
     return r.to_shell(append)
 
-def _bash_case_option_strings(action):
-    return '|'.join(map(shell.escape, sorted(action.option_strings)))
+def make_switch_case(strings):
+    return '|'.join(map(shell.escape, sorted(strings)))
 
-def _bash_make_optstring_test_pattern(option_strings):
+def make_optstring_test_pattern(option_strings):
     # Return the smallest pattern for matching optionals which take arguments
     # [[ $string == $pattern ]]
 
@@ -115,7 +115,7 @@ def _bash_make_optstring_test_pattern(option_strings):
 
     return "-@([%s]|-@(%s))" % (''.join(sorted(short_opts)), '|'.join(sorted(long_opts)))
 
-def _bash_complete_parser(info, parser, funcname, parent_parsers=[]):
+def complete_parser(info, parser, funcname, parent_parsers=[]):
     # The completion function returns 0 (success) if there was a match.
 
     funcname    = shell.make_identifier(funcname)
@@ -127,17 +127,17 @@ def _bash_complete_parser(info, parser, funcname, parent_parsers=[]):
 
     if len(parent_parsers) == 0:
         # The root parser makes those variables local and sets up the completion.
-        # Calls to subparser function modify these variables.
+        # Calls to subparser functions modify these variables.
         r += '  local cur prev words cword split args w\n'
         r += '  _init_completion -s || return\n'
         r += '\n'
 
         if len(positionals):
-            # The call to _count_args allows us to complete positionals later.
+            # The call to _count_args allows us to complete positionals later using $args.
             option_strings = []
             for a in filter(lambda a: a.takes_args(), parser._actions):
                 option_strings.extend(a.option_strings)
-            exclude_pattern = _bash_make_optstring_test_pattern(option_strings)
+            exclude_pattern = make_optstring_test_pattern(option_strings)
             r += '  _count_args "" "%s"\n' % exclude_pattern
 
     if len(subparsers):
@@ -152,10 +152,10 @@ def _bash_complete_parser(info, parser, funcname, parent_parsers=[]):
 
     if len(options):
         s = ''
-        for a in options:
-            if a.takes_args():
-                s += '    %s)\n' % _bash_case_option_strings(a)
-                s += '       %s\n'  % _bash_complete_action(a, False)
+        for action in options:
+            if action.takes_args():
+                s += '    %s)\n' % make_switch_case(action.option_strings)
+                s += '       %s\n'  % complete_action(action, False)
                 s += '       return 0;;\n'
         if s:
             r += '  case "$prev" in\n'
@@ -163,14 +163,14 @@ def _bash_complete_parser(info, parser, funcname, parent_parsers=[]):
             r += '  esac\n'
             r += '\n'
 
-    r += '  [[ "$cur" = -* ]] && %s\n' % _bash_complete('choices', parser.get_all_optstrings()).to_shell(True)
+    r += '  [[ "$cur" = -* ]] && %s\n' % complete('choices', parser.get_all_optstrings()).to_shell(True)
     r += '\n'
 
     if len(positionals):
-        r += '  case $args in\n'
-        for a in positionals:
-            r += '    %d)\n' % (info.get_positional_index(a) + 1)
-            r += '       %s\n' % _bash_complete_action(a)
+        r += '  case $args in\n' # $args is the number of args
+        for action in positionals:
+            r += '    %d)\n' % (info.get_positional_index(action) + 1)
+            r += '       %s\n' % complete_action(action)
             r += '       return 0;;\n'
         r += '  esac\n'
         r += '\n'
@@ -180,7 +180,7 @@ def _bash_complete_parser(info, parser, funcname, parent_parsers=[]):
 
     for name, sub in subparsers.items():
         f = shell.make_identifier('_%s_%s' % (parser.prog, name))
-        r += _bash_complete_parser(info, sub, f, parent_parsers + [parser])
+        r += complete_parser(info, sub, f, parent_parsers + [parser])
 
     return r
 
@@ -191,7 +191,7 @@ def generate_completion(parser, prog=None):
     info = utils.ArgparseInfo.create(parser)
     funcname = shell.make_identifier('_'+prog)
     r  = '#!/bin/bash\n\n'
-    r += _bash_complete_parser(info, parser, funcname).rstrip()
+    r += complete_parser(info, parser, funcname).rstrip()
     r += '\n\n'
     r += 'complete -F %s %s' % (funcname, prog)
     return r

@@ -2,37 +2,37 @@
 
 from . import utils
 
-def generate_markdown(p, prog=None):
-    if prog is None:
-        prog = p.prog
+def generate_markdown(parser, program_name=None):
+    if program_name is None:
+        program_name = parser.prog
 
     r = ''
 
-    if hasattr(p, 'markdown_prolog'):
-        r += p.markdown_prolog
+    if hasattr(parser, 'markdown_prolog'):
+        r += parser.markdown_prolog
 
-    if p.description:
+    if parser.description:
         r += 'DESCRIPTION\n'
         r += '-----------\n\n'
-        r += p.description + '\n'
+        r += parser.description + '\n'
     r += '\n'
 
     r += 'SYNOPSIS\n'
     r += '--------\n\n'
 
-    if p.usage:
-        r += p.usage + '\n'
+    if parser.usage:
+        r += parser.usage + '\n'
     else:
-        r += f'`{prog}` [OPTIONS]\n\n'
+        r += f'`{program_name}` [OPTIONS]\n\n'
 
-    if p._actions:
+    if parser._actions:
         r += 'OPTIONS\n'
         r += '-------\n\n'
 
-    for a in p._actions:
+    for a in parser._actions:
         typ = a.type or str
         typ = utils.type2str(typ)
-        r += f"  `{', '.join(a.option_strings)}"
+        r += '  `' + ', '.join(a.option_strings)
         if a.metavar:
             r += f" {a.metavar}"
         if a.choices:
@@ -42,7 +42,7 @@ def generate_markdown(p, prog=None):
         r += '`\n'
         r += '    %s\n\n' % a.help
 
-    subparsers = p.get_subparsers()
+    subparsers = parser.get_subparsers()
     if len(subparsers):
         r += '\nCOMMANDS\n'
         r += '---------\n\n'
@@ -51,11 +51,11 @@ def generate_markdown(p, prog=None):
             sub.prog = name
             r += '\n%s\n' % generate_markdown(sub)
 
-    if p.epilog:
-        r += p.epilog
+    if parser.epilog:
+        r += parser.epilog
 
-    if hasattr(p, 'markdown_epilog'):
-        r += p.markdown_epilog
+    if hasattr(parser, 'markdown_epilog'):
+        r += parser.markdown_epilog
 
     return r
 

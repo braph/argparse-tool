@@ -16,9 +16,7 @@ _argany_argument_parser = p
 del p
 
 def close_output_streams():
-    f = open(os.devnull, 'w')
-    sys.stdout = f
-    sys.stderr = f
+    sys.stdout = sys.stderr = open(os.devnull, 'w')
 
 def restore_output_streams():
     sys.stdout = sys.__stdout__
@@ -70,13 +68,14 @@ def import_file(file):
         directory = '.'
     if directory not in sys.path:
         sys.path.append(directory)
+
     return importlib.import_module(file)
 
 def generate(opts):
     try:
         module = import_file(opts.program)
     except Exception as e:
-        print("Warning: failed to load file using importlib, falling back to `exec`", file=sys.stderr)
+        print("Warning: failed to load `%s` using importlib, falling back to `exec`" % opts.program, file=sys.stderr)
         module = execute_file(opts.program)
 
     #directory, file = os.path.split(opts.program)
@@ -117,24 +116,12 @@ def generate(opts):
     else:
         print(r)
 
-commands = [[]]
-for arg in sys.argv[1:]:
-    if arg == ';':
-        commands.append([])
-    else:
-        commands[-1].append(arg)
-commands = [cmd for cmd in commands if len(cmd)]
-
-exit = 0
-for cmd in commands:
-    opts = None
-    try:
-        opts = _argany_argument_parser.parse_args(cmd)
-        generate(opts)
-    except Exception as e:
-        print('Error:', e, file=sys.stderr)
-        print('Opts:', opts, file=sys.stderr)
-        raise
-        exit = 1
-sys.exit(exit)
+try:
+    opts = _argany_argument_parser.parse_args()
+    generate(opts)
+except Exception as e:
+    print('Error:', e, file=sys.stderr)
+    print('Opts:', opts, file=sys.stderr)
+    raise
+    sys.exit(1)
 

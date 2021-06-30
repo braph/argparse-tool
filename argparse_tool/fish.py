@@ -53,14 +53,14 @@ class FishCompleter(shell.ShellCompleter):
 
 _fish_complete = FishCompleter().complete
 
-def _fish_join_escaped(l, delimiter=' '):
+def join_escaped(l, delimiter=' '):
     return delimiter.join(shell.escape(word) for word in l)
 
 # =============================================================================
 # Helper function for creating a `complete` command in fish
 # =============================================================================
 
-def _fish_make_complete(
+def make_complete(
       program_name,            # Name of program beeing completed
       short_options=[],        # List of short options
       long_options=[],         # List of long options
@@ -82,10 +82,10 @@ def _fish_make_complete(
     if requires_argument:  flags.add('r')
 
     if len(seen_words):
-        conditions += ["__fish_seen_subcommand_from %s" % _fish_join_escaped(sorted(seen_words))]
+        conditions += ["__fish_seen_subcommand_from %s" % join_escaped(sorted(seen_words))]
 
     if len(not_seen_words):
-        conditions += ["not __fish_seen_subcommand_from %s" % _fish_join_escaped(sorted(not_seen_words))]
+        conditions += ["not __fish_seen_subcommand_from %s" % join_escaped(sorted(not_seen_words))]
 
     if len(conflicting_options):
         conditions += ["not __fish_contains_opt %s" % ' '.join(o.lstrip('-') for o in sorted(conflicting_options))]
@@ -115,7 +115,7 @@ def _fish_make_complete(
 
     return 'complete -c ' + shell.escape(program_name) + flags + r
 
-def _fish_complete_action(info, parser, action, program_name, parent_commands=[]):
+def complete_action(info, parser, action, program_name, parent_commands=[]):
     short_options       = []
     long_options        = []
     positional          = None
@@ -131,7 +131,7 @@ def _fish_complete_action(info, parser, action, program_name, parent_commands=[]
     for option in info.get_conflicting_options(action):
         conflicting_options.update(option.option_strings)
 
-    r = _fish_make_complete(
+    r = make_complete(
         program_name,
         requires_argument   = action.requires_args(),
         description         = action.help,
@@ -145,7 +145,7 @@ def _fish_complete_action(info, parser, action, program_name, parent_commands=[]
     r += ' ' + _fish_complete(*shell.action_get_completer(action))
     return r.rstrip()
 
-def _fish_complete_parser(info, parser, program_name, parent_commands=[]):
+def complete_parser(info, parser, program_name, parent_commands=[]):
     # `parent_commands` is used to ensure that options of a command only show up
     #  if the command is present on the commandline. (see `seen_words`)
 
@@ -153,12 +153,12 @@ def _fish_complete_parser(info, parser, program_name, parent_commands=[]):
 
     # First, we complete all actions for the current parser.
     for action in parser._actions:
-        r += '%s\n' % _fish_complete_action(info, parser, action, program_name, parent_commands)
+        r += '%s\n' % complete_action(info, parser, action, program_name, parent_commands)
 
     for name, subparser in parser.get_subparsers().items():
         # Here we add the subcommand including its description
         r += f'# command {name}\n'
-        r += _fish_make_complete(
+        r += make_complete(
             program_name,
             no_files       = True,
             description    = subparser.get_help(),
@@ -169,7 +169,7 @@ def _fish_complete_parser(info, parser, program_name, parent_commands=[]):
         ) + '\n'
 
         # Recursive call to generate completion for a subcommand.
-        r += _fish_complete_parser(info, subparser, program_name, parent_commands + [name])
+        r += complete_parser(info, subparser, program_name, parent_commands + [name])
 
     return r
 
@@ -178,4 +178,4 @@ def generate_completion(parser, program_name=None):
         program_name = parser.prog
 
     info = utils.ArgparseInfo.create(parser)
-    return _fish_complete_parser(info, parser, program_name)
+    return complete_parser(info, parser, program_name)

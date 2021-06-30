@@ -55,11 +55,11 @@ class ZshCompleter(shell.ShellCompleter):
         return '_vars'
 
 
-_zsh_complete = ZshCompleter().complete
+complete = ZshCompleter().complete
 
 escape_colon = lambda s: s.replace(':', '\\:')
 
-def _zsh_make_argument_option_spec(
+def make_argument_option_spec(
         option_strings,
         conflicting_arguments=[],
         description = '',
@@ -92,7 +92,7 @@ def _zsh_make_argument_option_spec(
 
     return f'{conflicting_arguments}{option_strings}{description}:{metavar}:{action}'
 
-def _zsh_complete_action(info, parser, action):
+def complete_action(info, parser, action):
     if action.option_strings:
         metavar = ''
         if action.takes_args():
@@ -108,32 +108,32 @@ def _zsh_complete_action(info, parser, action):
         for a in info.get_conflicting_options(action):
             exclusive_options.update(a.option_strings)
 
-        return _zsh_make_argument_option_spec(
+        return make_argument_option_spec(
             action.option_strings,
             conflicting_arguments = exclusive_options,
             description = action.help,
             takes_args = action.takes_args(),
             metavar = metavar,
-            action = _zsh_complete(*shell.action_get_completer(action)))
+            action = complete(*shell.action_get_completer(action)))
 
     elif isinstance(action, argparse._SubParsersAction):
         choices = {}
         for name, subparser in parser.get_subparsers().items():
             choices[name] = subparser.get_help()
-        return ":command:" + _zsh_complete('choices', choices)
+        return ":command:" + complete('choices', choices)
         #return "':command:%s'" % shell.make_subparser_identifier(parser.prog)
     else:
         return ":%s:%s" % (
             shell.escape(escape_colon(action.help)) if action.help else '',
-            _zsh_complete(*shell.action_get_completer(action)))
+            complete(*shell.action_get_completer(action)))
 
-def _zsh_generate_completion_func(info, parser, funcname):
+def generate_completion_function(info, parser, funcname):
     args = []
     trailing_functions = ''
     r =  f'{funcname}() {{\n'
 
     for action in parser._actions:
-        args.append(_zsh_complete_action(info, parser, action))
+        args.append(complete_action(info, parser, action))
 
     if len(parser.get_subparsers()):
         args.append("'*::arg:->args'")
@@ -147,7 +147,7 @@ def _zsh_generate_completion_func(info, parser, funcname):
         r += '    case $w in\n'
         for name, subparser in subparsers.items():
             sub_funcname = shell.make_identifier(f'_{funcname}_{name}')
-            trailing_functions += _zsh_generate_completion_func(info, subparser, sub_funcname)
+            trailing_functions += generate_completion_function(info, subparser, sub_funcname)
             r += f'      ({name}) {sub_funcname}; break;;\n'
         r += '    esac\n'
         r += '  done\n'
@@ -161,7 +161,7 @@ def generate_completion(parser, program_name=None):
 
     info = utils.ArgparseInfo.create(parser)
     completion_funcname = '_' + shell.make_identifier(program_name)
-    completion_functions = _zsh_generate_completion_func(info, parser, completion_funcname)
+    completion_functions = generate_completion_function(info, parser, completion_funcname)
 
     return f'''\
 #compdef {program_name}
