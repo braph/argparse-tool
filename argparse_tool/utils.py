@@ -8,12 +8,10 @@ import sys, argparse
 
 def type2str(type):
     try:
-        return {
-            str:    'str',
-            int:    'int',
-            bool:   'bool',
-            float:  'float'
-        }[type]
+        return {str:   'str',
+                int:   'int',
+                bool:  'bool',
+                float: 'float'}[type]
     except:
         return '%r' % type
 
@@ -66,10 +64,30 @@ def action_takes_args(action):
     except: return action.nargs != 0
     #return isinstance(action, argparse.BooleanOptionalAction)
 
+def action_get_metavar(action):
+    if action.takes_args():
+        if action.metavar:
+            return action.metavar
+        elif action.type is not None:
+            return type2str(action.type)
+        else:
+            return action.dest
+
+    return '' # TODO raise?
+
+def action_get_short_options(action):
+    return list(sorted([o for o in action.option_strings if not o.startswith('--')]))
+
+def action_get_long_options(action):
+    return list(sorted([o for o in action.option_strings if o.startswith('--')]))
+
 a = argparse.Action
-a.complete      = action_complete
-a.requires_args = action_requires_args
-a.takes_args    = action_takes_args
+a.complete          = action_complete
+a.requires_args     = action_requires_args
+a.takes_args        = action_takes_args
+a.get_metavar       = action_get_metavar
+a.get_short_options = action_get_short_options
+a.get_long_options  = action_get_long_options
 
 # =============================================================================
 # Functions for getting information about an ArgumentParsers object
@@ -91,6 +109,14 @@ def parser_get_conflicting_options(parser, action):
             conflicts.extend(group_actions[i + 1:])
 
     return action_conflicts.get(action, [])
+
+def parser_get_conflicting_option_strings(parser, action):
+    option_strings = set(action.option_strings)
+
+    for a in parser.get_conflicting_options(action):
+        option_strings.update(a.option_strings)
+
+    return option_strings
 
 def parser_get_help(o):
     try:    return o.help
@@ -123,11 +149,12 @@ def parser_get_subparsers(parser):
     return {}
 
 p = argparse.ArgumentParser
-p.get_all_optstrings      = parser_get_all_optstrings
-p.get_conflicting_options = parser_get_conflicting_options
-p.get_help                = parser_get_help
-p.get_options             = parser_get_options
-p.get_positionals         = parser_get_positionals
-p.get_positional_num      = parser_get_positional_num
-p.get_subparsers          = parser_get_subparsers
+p.get_all_optstrings             = parser_get_all_optstrings
+p.get_conflicting_options        = parser_get_conflicting_options
+p.get_conflicting_option_strings = parser_get_conflicting_option_strings
+p.get_help                       = parser_get_help
+p.get_options                    = parser_get_options
+p.get_positionals                = parser_get_positionals
+p.get_positional_num             = parser_get_positional_num
+p.get_subparsers                 = parser_get_subparsers
 

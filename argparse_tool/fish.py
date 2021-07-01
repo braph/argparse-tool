@@ -116,30 +116,20 @@ def make_complete(
     return 'complete -c ' + shell.escape(program_name) + flags + r
 
 def complete_action(parser, action, program_name, parent_commands=[]):
-    short_options       = []
-    long_options        = []
-    positional          = None
-    conflicting_options = set()
+    positional = None
 
     if not action.option_strings:
         positional = parser.get_positional_num(action)
-    else:
-        for opt in sorted(action.option_strings):
-            if opt.startswith('--'): long_options.append(opt)
-            else:                    short_options.append(opt)
-
-    for option in parser.get_conflicting_options(action):
-        conflicting_options.update(option.option_strings)
 
     r = make_complete(
         program_name,
         requires_argument   = action.requires_args(),
         description         = action.help,
         seen_words          = parent_commands,
-        short_options       = short_options,
         positional          = positional,
-        long_options        = long_options,
-        conflicting_options = conflicting_options
+        short_options       = action.get_short_options(),
+        long_options        = action.get_long_options(),
+        conflicting_options = parser.get_conflicting_option_strings(action)
     )
 
     r += ' ' + _fish_complete(*shell.action_get_completer(action))

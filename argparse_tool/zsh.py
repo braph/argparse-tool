@@ -95,26 +95,12 @@ def make_argument_option_spec(
 
 def complete_action(parser, action):
     if action.option_strings:
-        metavar = ''
-        if action.takes_args():
-            if action.metavar:
-                metavar = action.metavar
-            elif action.type is not None:
-                metavar = utils.type2str(action.type)
-            else:
-                metavar = action.dest
-
-        # Exclusive options
-        exclusive_options = set(action.option_strings)
-        for a in parser.get_conflicting_options(action):
-            exclusive_options.update(a.option_strings)
-
         return make_argument_option_spec(
             action.option_strings,
-            conflicting_arguments = exclusive_options,
+            conflicting_arguments = parser.get_conflicting_option_strings(action),
             description = action.help,
             takes_args = action.takes_args(),
-            metavar = metavar,
+            metavar = action.get_metavar(),
             action = complete(*shell.action_get_completer(action)))
 
     elif isinstance(action, argparse._SubParsersAction):

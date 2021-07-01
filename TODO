@@ -1,17 +1,8 @@
-Unify/deduplicate following code (zsh.py)
+- zsh: 
+        choices = {}
+        for name, subparser in parser.get_subparsers().items():
+            choices[name] = subparser.get_help()
+        return ":command:" + complete('choices', choices)
 
-    metavar = ''
-    if action.takes_args():
-        if action.metavar:
-            metavar = action.metavar
-        elif action.type is not None:
-            metavar = utils.type2str(action.type)
-        else:
-            metavar = action.dest
-
-Unify/deduplicate following code(zsh.py, ...)
-
-      # Exclusive options
-      exclusive_options = set(action.option_strings)
-      for a in info.get_conflicting_options(action):
-          exclusive_options.update(a.option_strings)
+  don't use complete('choices',...)
+  because the formatting sucks for long command<>description pairs
