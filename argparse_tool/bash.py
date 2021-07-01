@@ -84,7 +84,13 @@ def complete_action(action, append=True):
     r = complete(*shell.action_get_completer(action))
     return r.to_shell(append)
 
-def make_switch_case(strings):
+def get_options_with_arguments(parser):
+    option_strings = []
+    for a in filter(lambda a: a.takes_args(), parser._actions):
+        option_strings.extend(a.option_strings)
+    return option_strings
+
+def make_switch_case_pattern(strings):
     return '|'.join(map(shell.escape, sorted(strings)))
 
 def make_optstring_test_pattern(option_strings):
@@ -115,7 +121,7 @@ def make_optstring_test_pattern(option_strings):
 
     return "-@([%s]|-@(%s))" % (''.join(sorted(short_opts)), '|'.join(sorted(long_opts)))
 
-def complete_parser(info, parser, funcname, parent_parsers=[]):
+def complete_parser(parser, funcname, parent_parsers=[]):
     # The completion function returns 0 (success) if there was a match.
 
     funcname    = shell.make_identifier(funcname)
@@ -134,11 +140,8 @@ def complete_parser(info, parser, funcname, parent_parsers=[]):
 
         if len(positionals):
             # The call to _count_args allows us to complete positionals later using $args.
-            option_strings = []
-            for a in filter(lambda a: a.takes_args(), parser._actions):
-                option_strings.extend(a.option_strings)
-            exclude_pattern = make_optstring_test_pattern(option_strings)
-            r += '  _count_args "" "%s"\n' % exclude_pattern
+            option_strings = get_options_with_arguments(parser)
+            r += '  _count_args "" "%s"\n' % make_optstring_test_pattern(option_strings)
 
     if len(subparsers):
         r += '  for w in "${COMP_WORDS[@]}"; do\n'
@@ -154,8 +157,8 @@ def complete_parser(info, parser, funcname, parent_parsers=[]):
         s = ''
         for action in options:
             if action.takes_args():
-                s += '    %s)\n' % make_switch_case(action.option_strings)
-                s += '       %s\n'  % complete_action(action, False)
+                s += '    %s)\n' % make_switch_case_pattern(action.option_strings)
+                s += '       %s\n' % complete_action(action, False)
                 s += '       return 0;;\n'
         if s:
             r += '  case "$prev" in\n'
@@ -169,7 +172,7 @@ def complete_parser(info, parser, funcname, parent_parsers=[]):
     if len(positionals):
         r += '  case $args in\n' # $args is the number of args
         for action in positionals:
-            r += '    %d)\n' % (info.get_positional_index(action) + 1)
+            r += '    %d)\n' % (parser.get_positional_num(action))
             r += '       %s\n' % complete_action(action)
             r += '       return 0;;\n'
         r += '  esac\n'
@@ -180,18 +183,17 @@ def complete_parser(info, parser, funcname, parent_parsers=[]):
 
     for name, sub in subparsers.items():
         f = shell.make_identifier('_%s_%s' % (parser.prog, name))
-        r += complete_parser(info, sub, f, parent_parsers + [parser])
+        r += complete_parser(sub, f, parent_parsers + [parser])
 
     return r
 
-def generate_completion(parser, prog=None):
-    if prog is None:
-        prog = parser.prog
+def generate_completion(parser, program_name=None):
+    if program_name is None:
+        program_name = parser.prog
 
-    info = utils.ArgparseInfo.create(parser)
-    funcname = shell.make_identifier('_'+prog)
+    funcname = shell.make_identifier('_'+program_name)
     r  = '#!/bin/bash\n\n'
-    r += complete_parser(info, parser, funcname).rstrip()
+    r += complete_parser(parser, funcname).rstrip()
     r += '\n\n'
-    r += 'complete -F %s %s' % (funcname, prog)
+    r += 'complete -F %s %s' % (funcname, program_name)
     return r

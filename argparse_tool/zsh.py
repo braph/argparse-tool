@@ -57,7 +57,8 @@ class ZshCompleter(shell.ShellCompleter):
 
 complete = ZshCompleter().complete
 
-escape_colon = lambda s: s.replace(':', '\\:')
+def escape_colon(s):
+    return s.replace(':', '\\:')
 
 def make_argument_option_spec(
         option_strings,
@@ -92,7 +93,7 @@ def make_argument_option_spec(
 
     return f'{conflicting_arguments}{option_strings}{description}:{metavar}:{action}'
 
-def complete_action(info, parser, action):
+def complete_action(parser, action):
     if action.option_strings:
         metavar = ''
         if action.takes_args():
@@ -105,7 +106,7 @@ def complete_action(info, parser, action):
 
         # Exclusive options
         exclusive_options = set(action.option_strings)
-        for a in info.get_conflicting_options(action):
+        for a in parser.get_conflicting_options(action):
             exclusive_options.update(a.option_strings)
 
         return make_argument_option_spec(
@@ -127,13 +128,13 @@ def complete_action(info, parser, action):
             shell.escape(escape_colon(action.help)) if action.help else '',
             complete(*shell.action_get_completer(action)))
 
-def generate_completion_function(info, parser, funcname):
+def generate_completion_function(parser, funcname):
     args = []
     trailing_functions = ''
     r =  f'{funcname}() {{\n'
 
     for action in parser._actions:
-        args.append(complete_action(info, parser, action))
+        args.append(complete_action(parser, action))
 
     if len(parser.get_subparsers()):
         args.append("'*::arg:->args'")
@@ -147,7 +148,7 @@ def generate_completion_function(info, parser, funcname):
         r += '    case $w in\n'
         for name, subparser in subparsers.items():
             sub_funcname = shell.make_identifier(f'_{funcname}_{name}')
-            trailing_functions += generate_completion_function(info, subparser, sub_funcname)
+            trailing_functions += generate_completion_function(subparser, sub_funcname)
             r += f'      ({name}) {sub_funcname}; break;;\n'
         r += '    esac\n'
         r += '  done\n'
@@ -159,9 +160,8 @@ def generate_completion(parser, program_name=None):
     if program_name is None:
         program_name = parser.prog
 
-    info = utils.ArgparseInfo.create(parser)
     completion_funcname = '_' + shell.make_identifier(program_name)
-    completion_functions = generate_completion_function(info, parser, completion_funcname)
+    completion_functions = generate_completion_function(parser, completion_funcname)
 
     return f'''\
 #compdef {program_name}

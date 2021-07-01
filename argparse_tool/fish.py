@@ -115,20 +115,20 @@ def make_complete(
 
     return 'complete -c ' + shell.escape(program_name) + flags + r
 
-def complete_action(info, parser, action, program_name, parent_commands=[]):
+def complete_action(parser, action, program_name, parent_commands=[]):
     short_options       = []
     long_options        = []
     positional          = None
     conflicting_options = set()
 
     if not action.option_strings:
-        positional = 1 + info.get_positional_index(action)
+        positional = parser.get_positional_num(action)
     else:
         for opt in sorted(action.option_strings):
             if opt.startswith('--'): long_options.append(opt)
             else:                    short_options.append(opt)
 
-    for option in info.get_conflicting_options(action):
+    for option in parser.get_conflicting_options(action):
         conflicting_options.update(option.option_strings)
 
     r = make_complete(
@@ -145,7 +145,7 @@ def complete_action(info, parser, action, program_name, parent_commands=[]):
     r += ' ' + _fish_complete(*shell.action_get_completer(action))
     return r.rstrip()
 
-def complete_parser(info, parser, program_name, parent_commands=[]):
+def complete_parser(parser, program_name, parent_commands=[]):
     # `parent_commands` is used to ensure that options of a command only show up
     #  if the command is present on the commandline. (see `seen_words`)
 
@@ -153,7 +153,7 @@ def complete_parser(info, parser, program_name, parent_commands=[]):
 
     # First, we complete all actions for the current parser.
     for action in parser._actions:
-        r += '%s\n' % complete_action(info, parser, action, program_name, parent_commands)
+        r += '%s\n' % complete_action(parser, action, program_name, parent_commands)
 
     for name, subparser in parser.get_subparsers().items():
         # Here we add the subcommand including its description
@@ -169,7 +169,7 @@ def complete_parser(info, parser, program_name, parent_commands=[]):
         ) + '\n'
 
         # Recursive call to generate completion for a subcommand.
-        r += complete_parser(info, subparser, program_name, parent_commands + [name])
+        r += complete_parser(subparser, program_name, parent_commands + [name])
 
     return r
 
@@ -177,5 +177,4 @@ def generate_completion(parser, program_name=None):
     if program_name is None:
         program_name = parser.prog
 
-    info = utils.ArgparseInfo.create(parser)
-    return complete_parser(info, parser, program_name)
+    return complete_parser(parser, program_name)

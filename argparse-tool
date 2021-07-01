@@ -100,6 +100,7 @@ def generate(opts):
         opts.program_name = parser.prog
 
     utils.add_help_to_subparsers(parser)
+    utils.add_parent_parsers(parser)
 
     r = {
         'bash':     bash.generate_completion,
