@@ -111,19 +111,23 @@ def parser_get_conflicting_options(parser, action):
     return action_conflicts.get(action, [])
 
 def parser_get_conflicting_option_strings(parser, action):
-    option_strings = set(action.option_strings)
+    option_strings = set()
 
     for a in parser.get_conflicting_options(action):
         option_strings.update(a.option_strings)
 
-    return option_strings
+    return list(option_strings)
 
 def parser_get_help(o):
     try:    return o.help
     except: return o.description
 
-def parser_get_options(parser):
-    return [a for a in parser._actions if a.option_strings]
+def parser_get_options(parser, only_with_arguments=False):
+    result = []
+    for a in parser._actions:
+        if len(a.option_strings) >= 1 and (only_with_arguments is False or a.takes_args()):
+            result.append(a)
+    return result
 
 def parser_get_positionals(parser):
     return [a for a in parser._actions if not a.option_strings]

@@ -117,7 +117,7 @@ def make_optstring_test_pattern(option_strings):
         return '--@(%s)' % '|'.join(sorted(long_opts))
 
     if not len(long_opts):
-        return '-@([%s])' % ''.join(sorted(long_opts))
+        return '-@([%s])' % ''.join(sorted(short_opts))
 
     return "-@([%s]|-@(%s))" % (''.join(sorted(short_opts)), '|'.join(sorted(long_opts)))
 
@@ -155,11 +155,11 @@ def complete_parser(parser, funcname, parent_parsers=[]):
 
     if len(options):
         s = ''
-        for action in options:
-            if action.takes_args():
-                s += '    %s)\n' % make_switch_case_pattern(action.option_strings)
-                s += '       %s\n' % complete_action(action, False)
-                s += '       return 0;;\n'
+        for action in parser.get_options(only_with_arguments=True):
+            s += '    %s)\n' % make_switch_case_pattern(action.option_strings)
+            s += '       %s\n' % complete_action(action, False)
+            s += '       return 0;;\n'
+
         if s:
             r += '  case "$prev" in\n'
             r += s

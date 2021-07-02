@@ -4,54 +4,54 @@ import sys
 from . import shell, utils
 
 class FishCompleter(shell.ShellCompleter):
+    # Important: If the completion has '-f', it has to be the first argument
+
     def none(self):
-        return ''
+        return []
 
     def choices(self, choices):
-        return '-f -a ' + shell.escape(' '.join(shell.escape(str(c)) for c in choices))
+        return ['-f', '-a', shell.escape(' '.join(shell.escape(str(c)) for c in choices))]
 
     def command(self):
-        return "-f -a '(__fish_complete_command)'"
+        return ['-f', '-a', "'(__fish_complete_command)'"]
 
     def directory(self, glob_pattern=None):
         if glob_pattern:
-            return "-f -a '(__fish_complete_directories %s)'" % shell.escape(glob_pattern)
-        return "-f -a '(__fish_complete_directories)'"
+            return ['-f', '-a', "(__fish_complete_directories %s)'" % shell.escape(glob_pattern)]
+        return ['-f', '-a', "'(__fish_complete_directories)'"]
 
     def file(self, glob_pattern=None):
         if glob_pattern:
             print("Warning, glob_pattern `%s' ignored\n" % glob_pattern, file=sys.stderr)
-        return '-F'
+        return ['-F']
 
     def group(self):
-        return "-f -a '(__fish_complete_groups)'"
+        return ['-f', '-a', "'(__fish_complete_groups)'"]
 
     def hostname(self):
-        return "-f -a '(__fish_print_hostnames)'"
+        return ['-f', '-a', "'(__fish_print_hostnames)'"]
 
     def pid(self):
-        return "-f -a '(__fish_complete_pids)'"
+        return ['-f', '-a', "'(__fish_complete_pids)'"]
 
     def process(self):
-        return "-f -a '(__fish_complete_proc)'"
+        return ['-f', '-a', "'(__fish_complete_proc)'"]
 
     def range(self, range):
         if range.step == 1:
-            return f"-f -a '(seq {range.start} {range.stop})'"
+            return ['-f', '-a', f"'(seq {range.start} {range.stop})'"]
         else:
-            return f"-f -a '(seq {range.start} {range.step} {range.stop})'"
+            return ['-f', '-a', f"'(seq {range.start} {range.step} {range.stop})'"]
 
     def service(self):
-        return "-f -a '(__fish_systemctl_services)'"
+        return ['-f', '-a', "'(__fish_systemctl_services)'"]
 
     def user(self):
-        return "-f -a '(__fish_complete_users)'"
+        return ['-f', '-a', "'(__fish_complete_users)'"]
 
     def variable(self):
-        return "-f -a '(set -n)'"
+        return ['-f', '-a', "'(set -n)'"]
 
-
-_fish_complete = FishCompleter().complete
 
 def join_escaped(l, delimiter=' '):
     return delimiter.join(shell.escape(word) for word in l)
@@ -71,11 +71,11 @@ def make_complete(
       positional=None,         # Only show if current word number is `positional`
       requires_argument=False, # Option requires an argument
       no_files=False,          # Don't use file completion
-      choices=[]               # Add those words for completion
+      choices=[],              # Add those words for completion
+      flags=set()              # Add those flags (without leading dash)
     ):
 
     r = ''
-    flags = set()
     conditions = []
 
     if no_files:           flags.add('f')
@@ -121,6 +121,14 @@ def complete_action(parser, action, program_name, parent_commands=[]):
     if not action.option_strings:
         positional = parser.get_positional_num(action)
 
+    completer = FishCompleter()
+    completion_args = completer.complete(*shell.action_get_completer(action))
+
+    flags = set() # Drop '-f' and add it to flags
+    if len(completion_args) and completion_args[0] == '-f':
+        flags.add('f')
+        completion_args.pop(0)
+
     r = make_complete(
         program_name,
         requires_argument   = action.requires_args(),
@@ -129,11 +137,11 @@ def complete_action(parser, action, program_name, parent_commands=[]):
         positional          = positional,
         short_options       = action.get_short_options(),
         long_options        = action.get_long_options(),
-        conflicting_options = parser.get_conflicting_option_strings(action)
+        conflicting_options = parser.get_conflicting_option_strings(action),
+        flags               = flags
     )
 
-    r += ' ' + _fish_complete(*shell.action_get_completer(action))
-    return r.rstrip()
+    return (r + ' ' + ' '.join(completion_args)).rstrip()
 
 def complete_parser(parser, program_name, parent_commands=[]):
     # `parent_commands` is used to ensure that options of a command only show up

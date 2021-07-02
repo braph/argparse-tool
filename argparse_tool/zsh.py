@@ -71,13 +71,15 @@ def make_argument_option_spec(
     # '(--option -o)'{--option=,-o+}'[Option description]':Metavar:'action'
 
     # Any literal colon in an optname, message, or action must be preceded by a backslash, `\:'.
-    conflicting_arguments = [escape_colon(s) for s in sorted(conflicting_arguments)]
+    conflicting_arguments = [escape_colon(s) for s in sorted(conflicting_arguments + option_strings)]
     option_strings        = [escape_colon(s) for s in sorted(option_strings)]
     description           = escape_colon('['+description+']') if description else ''
     metavar               = escape_colon(metavar)
 
     if conflicting_arguments:
         conflicting_arguments = shell.escape("(%s)" % ' '.join(escape_colon(s) for s in conflicting_arguments))
+    else:
+        conflicting_arguments = ''
 
     if takes_args:
         option_strings = [o+'+' if len(o) == 2 else o+'=' for o in option_strings]

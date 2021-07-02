@@ -2,7 +2,7 @@
 
 import argparse
 
-try:    import utils
+try:    from argparse_tool import utils
 except: argparse.Action.complete = lambda s, *_: s
 
 argp = argparse.ArgumentParser(prog='argparse-tool-test',
