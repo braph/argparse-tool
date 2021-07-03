@@ -114,7 +114,7 @@ def make_optstring_test_pattern(option_strings):
 
     return "-@([%s]|-@(%s))" % (''.join(sorted(short_opts)), '|'.join(sorted(long_opts)))
 
-def complete_parser(parser, funcname, parent_parsers=[]):
+def complete_parser(parser, funcname):
     # The completion function returns 0 (success) if there was a completion match.
     # This return code is used when dealing with subparsers.
 
@@ -125,7 +125,7 @@ def complete_parser(parser, funcname, parent_parsers=[]):
 
     r  = f'{funcname}() {{\n'
 
-    if len(parent_parsers) == 0:
+    if parser.parent is None:
         # The root parser makes those variables local and sets up the completion.
         # Calls to subparser functions modify these variables.
         r += '  local cur prev words cword split args w\n'
@@ -151,7 +151,9 @@ def complete_parser(parser, funcname, parent_parsers=[]):
         s = ''
         for action in parser.get_options(only_with_arguments=True):
             s += '    %s)\n' % make_switch_case_pattern(action.option_strings)
-            s += '       %s\n' % complete_action(action, False)
+            code = complete_action(action, False)
+            if code:
+                s += '       %s\n' % code
             s += '       return 0;;\n'
 
         if s:
@@ -166,8 +168,7 @@ def complete_parser(parser, funcname, parent_parsers=[]):
     if len(positionals):
         r += '  case $args in\n' # $args is the number of args
         for action in positionals:
-            r += '    %d)\n' % (parser.get_positional_num(action))
-            r += '       %s\n' % complete_action(action)
+            r += '    %d) %s\n' % (parser.get_positional_num(action), complete_action(action))
             r += '       return 0;;\n'
         r += '  esac\n'
         r += '\n'
@@ -177,7 +178,7 @@ def complete_parser(parser, funcname, parent_parsers=[]):
 
     for name, sub in subparsers.items():
         f = shell.make_identifier('_%s_%s' % (parser.prog, name))
-        r += complete_parser(sub, f, parent_parsers + [parser])
+        r += complete_parser(sub, f)
 
     return r
 

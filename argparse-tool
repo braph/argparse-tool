@@ -5,7 +5,7 @@ from argparse_tool import utils, zsh, bash, fish, printf, man, markdown
 
 p = argparse.ArgumentParser('argany', 'Generate shell completions and documentation using python argparse')
 p.add_argument('action')
-p.add_argument('program')
+p.add_argument('program_file')
 p.add_argument('--parser_variable', default=None, help='Specify parser variable')
 p.add_argument('-o', '--output',    default=None, help='Destination file [default: stdout]')
 p.add_argument('--program_name',    default=None, help='Program name')
@@ -73,19 +73,10 @@ def import_file(file):
 
 def generate(opts):
     try:
-        module = import_file(opts.program)
+        module = import_file(opts.program_file)
     except Exception as e:
-        print("Warning: failed to load `%s` using importlib, falling back to `exec`" % opts.program, file=sys.stderr)
-        module = execute_file(opts.program)
-
-    #directory, file = os.path.split(opts.program)
-    #if file.endswith('.py'):
-    #    file = file[:-3]
-    #if not directory:
-    #    directory = '.'
-    #if directory not in sys.path:
-    #    sys.path.append(directory)
-    #module = importlib.import_module(file)
+        print("Warning: failed to load `%s` using importlib, falling back to `exec`" % opts.program_file, file=sys.stderr)
+        module = execute_file(opts.program_file)
 
     if opts.parser_variable:
         parser = getattr(module, opts.parser_variable)
@@ -93,7 +84,7 @@ def generate(opts):
         parser = find_ArgumentParser(module)
 
     if parser is None:
-        print("Could not get ArgumentParser object from module", opts.program, file=sys.stderr)
+        print("Could not get ArgumentParser object from `%s`" % opts.program_file, file=sys.stderr)
         sys.exit(1)
 
     if opts.program_name is None:
@@ -122,7 +113,7 @@ try:
     generate(opts)
 except Exception as e:
     print('Error:', e, file=sys.stderr)
-    print('Opts:', opts, file=sys.stderr)
+    print('Options:', opts, file=sys.stderr)
     raise
     sys.exit(1)
 
