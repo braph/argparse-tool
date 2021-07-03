@@ -77,6 +77,7 @@ def make_complete(
 
     r = ''
     conditions = []
+    flags = set(flags)
 
     if no_files:           flags.add('f')
     if requires_argument:  flags.add('r')

@@ -5,15 +5,16 @@ import sys, re, argparse, collections
 def make_identifier(s):
     ''' Make `s` a valid shell identifier '''
     s = s.replace('-', '_')
-    s = re.sub('[^a-zA-Z0-9_:]', '', s)
-    while '__' in s:
-        s = s.replace('__', '_')
-    return s.lstrip('0123456789')
+    s = re.sub('[^a-zA-Z0-9_]', '', s)
+    s = re.sub('_+', '_', s)
+    if s[0] in '0123456789':
+        return '_' + s
+    return s
 
 def escape(s, escape_empty_string=True):
     ''' Shell escape `s` '''
     if not s and escape_empty_string is False: return ''
-    if re.fullmatch('[a-zA-Z0-9_,-]+', s): return s
+    if re.fullmatch('[a-zA-Z0-9_,:-]+', s): return s
     if "'" not in s: return "'%s'" % s
     if '"' not in s: return '"%s"' % s.replace('\\', '\\\\').replace('"', '\\"')
     return "'%s'" % s.replace("'", '\'"\'"\'')

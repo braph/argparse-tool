@@ -25,7 +25,7 @@ argp.add_argument('--range',      help='Complete a range', type=int, choices=ran
 argp.add_argument('--integer',    help='Option with integer', type=int)
 argp.add_argument('--single-quote-in-description',  help="Here is a single quote: '")
 argp.add_argument('--double-quote-in-description',  help='Here is a double quote: "')
-argp.add_argument('--special-chars-in-description', help='Here are some special chars: $(echo "`ls`")')
+argp.add_argument('--special-chars-in-description', help='Here are some special chars: $(echo \'\\"`ls`")')
 group = argp.add_mutually_exclusive_group()
 group.add_argument('--exclusive-1', action='store_true')
 group.add_argument('--exclusive-2', action='store_true')

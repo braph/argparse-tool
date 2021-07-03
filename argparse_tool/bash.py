@@ -115,7 +115,8 @@ def make_optstring_test_pattern(option_strings):
     return "-@([%s]|-@(%s))" % (''.join(sorted(short_opts)), '|'.join(sorted(long_opts)))
 
 def complete_parser(parser, funcname, parent_parsers=[]):
-    # The completion function returns 0 (success) if there was a match.
+    # The completion function returns 0 (success) if there was a completion match.
+    # This return code is used when dealing with subparsers.
 
     funcname    = shell.make_identifier(funcname)
     options     = parser.get_options()
