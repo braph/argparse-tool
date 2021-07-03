@@ -105,7 +105,7 @@ def complete_action(parser, action):
             metavar = action.get_metavar(),
             action = complete(*shell.action_get_completer(action)))
 
-    elif isinstance(action, argparse._SubParsersAction):
+    elif action.is_SubParsersAction():
         choices = {}
         for name, subparser in parser.get_subparsers().items():
             choices[name] = subparser.get_help()

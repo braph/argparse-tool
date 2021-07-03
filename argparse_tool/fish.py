@@ -4,7 +4,7 @@ import sys
 from . import shell, utils
 
 class FishCompleter(shell.ShellCompleter):
-    # Important: If the completion has '-f', it has to be the first argument
+    # Important: If the completion has '-f', it has to be specified *first*
 
     def none(self):
         return []
@@ -103,10 +103,12 @@ def make_complete(
     for s in choices:
         r += ' -a ' + shell.escape(s)
 
-    if 'r' in flags and 'f' in flags:
-        flags.remove('r')
-        flags.remove('f')
+    if 'r' in flags and 'f' in flags: # -r -f is the same as -x
         flags.add('x')
+
+    if 'x' in flags: # -x implies -r -f
+        flags.discard('r')
+        flags.discard('f')
 
     if len(flags):
         flags = ' -' + ''.join(flags)
@@ -151,6 +153,10 @@ def complete_parser(parser, program_name, parent_commands=[]):
 
     # First, we complete all actions for the current parser.
     for action in parser._actions:
+        # Subcommands are handeled below...
+        if action.is_SubParsersAction():
+            continue
+
         r += '%s\n' % complete_action(parser, action, program_name, parent_commands)
 
     for name, subparser in parser.get_subparsers().items():

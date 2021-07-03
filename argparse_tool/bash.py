@@ -84,20 +84,13 @@ def complete_action(action, append=True):
     r = complete(*shell.action_get_completer(action))
     return r.to_shell(append)
 
-def get_options_with_arguments(parser):
-    option_strings = []
-    for a in filter(lambda a: a.takes_args(), parser._actions):
-        option_strings.extend(a.option_strings)
-    return option_strings
-
 def make_switch_case_pattern(strings):
     return '|'.join(map(shell.escape, sorted(strings)))
 
 def make_optstring_test_pattern(option_strings):
-    # Return the smallest pattern for matching optionals which take arguments
-    # [[ $string == $pattern ]]
+    # Return the smallest pattern for matching option_strings [[ $string == $pattern ]]
 
-    option_strings = sorted(option_strings)
+    option_strings = list(sorted(option_strings))
 
     if len(option_strings) == 0:
         return '' # TODO?
@@ -140,7 +133,7 @@ def complete_parser(parser, funcname, parent_parsers=[]):
 
         if len(positionals):
             # The call to _count_args allows us to complete positionals later using $args.
-            option_strings = get_options_with_arguments(parser)
+            option_strings = parser.get_option_strings(only_with_arguments=True)
             r += '  _count_args "" "%s"\n' % make_optstring_test_pattern(option_strings)
 
     if len(subparsers):

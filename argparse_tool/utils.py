@@ -81,13 +81,17 @@ def action_get_short_options(action):
 def action_get_long_options(action):
     return list(sorted([o for o in action.option_strings if o.startswith('--')]))
 
+def action_is_SubParsersAction(action):
+    return isinstance(action, argparse._SubParsersAction)
+
 a = argparse.Action
-a.complete          = action_complete
-a.requires_args     = action_requires_args
-a.takes_args        = action_takes_args
-a.get_metavar       = action_get_metavar
-a.get_short_options = action_get_short_options
-a.get_long_options  = action_get_long_options
+a.complete            = action_complete
+a.requires_args       = action_requires_args
+a.takes_args          = action_takes_args
+a.get_metavar         = action_get_metavar
+a.get_short_options   = action_get_short_options
+a.get_long_options    = action_get_long_options
+a.is_SubParsersAction = action_is_SubParsersAction
 
 # =============================================================================
 # Functions for getting information about an ArgumentParsers object
@@ -129,6 +133,14 @@ def parser_get_options(parser, only_with_arguments=False):
             result.append(a)
     return result
 
+def parser_get_option_strings(parser, only_with_arguments=False):
+    option_strings = set()
+
+    for a in parser.get_options(only_with_arguments):
+        option_strings.update(a.option_strings)
+
+    return list(option_strings)
+
 def parser_get_positionals(parser):
     return [a for a in parser._actions if not a.option_strings]
 
@@ -158,6 +170,7 @@ p.get_conflicting_options        = parser_get_conflicting_options
 p.get_conflicting_option_strings = parser_get_conflicting_option_strings
 p.get_help                       = parser_get_help
 p.get_options                    = parser_get_options
+p.get_option_strings             = parser_get_option_strings
 p.get_positionals                = parser_get_positionals
 p.get_positional_num             = parser_get_positional_num
 p.get_subparsers                 = parser_get_subparsers

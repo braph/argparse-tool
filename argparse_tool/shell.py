@@ -25,9 +25,6 @@ def action_get_completer(action):
     if hasattr(action, 'completer'):
         return getattr(action, 'completer')
 
-    if isinstance(action, argparse._SubParsersAction):
-        pass # TODO!
-
     if action.choices:
         if isinstance(action.choices, (list, tuple, set, dict)):
             return ('choices', action.choices)
