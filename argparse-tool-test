@@ -8,6 +8,7 @@ except: argparse.Action.complete = lambda s, *_: s
 argp = argparse.ArgumentParser(prog='argparse-tool-test',
     description='Test argument parser for shell completion')
 
+argp.add_argument('--version',    action='version')
 argp.add_argument('--file',       help='Complete a file').complete('file')
 argp.add_argument('--directory',  help='Complete a directory').complete('directory')
 argp.add_argument('--user',       help='Complete a user').complete('user')

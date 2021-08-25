@@ -81,7 +81,7 @@ class BashCompleter(shell.ShellCompleter):
 complete = BashCompleter().complete
 
 def complete_action(action, append=True):
-    r = complete(*shell.action_get_completer(action))
+    r = complete(*shell.action_get_completion(action))
     return r.to_shell(append)
 
 def make_switch_case_pattern(strings):

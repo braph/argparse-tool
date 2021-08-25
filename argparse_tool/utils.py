@@ -46,7 +46,7 @@ def add_parent_parsers(parser, parent=None):
 # =============================================================================
 
 def action_complete(self, action, *a):
-    setattr(self, 'completer', (action, *a))
+    setattr(self, 'completion', (action, *a))
     return self
 
 def action_requires_args(action):

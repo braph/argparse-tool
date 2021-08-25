@@ -125,7 +125,7 @@ def complete_action(parser, action, program_name, parent_commands=[]):
         positional = parser.get_positional_num(action)
 
     completer = FishCompleter()
-    completion_args = completer.complete(*shell.action_get_completer(action))
+    completion_args = completer.complete(*shell.action_get_completion(action))
 
     flags = set() # Drop '-f' and add it to flags
     if len(completion_args) and completion_args[0] == '-f':

@@ -22,9 +22,9 @@ def escape(s, escape_empty_string=True):
 def make_subparser_identifier(s):
     return make_identifier(f'_{s}_subcommands')
 
-def action_get_completer(action):
-    if hasattr(action, 'completer'):
-        return getattr(action, 'completer')
+def action_get_completion(action):
+    if hasattr(action, 'completion'):
+        return getattr(action, 'completion')
 
     if action.choices:
         if isinstance(action.choices, (list, tuple, set, dict)):
@@ -42,12 +42,12 @@ def action_get_completer(action):
     return ('none',)
 
 class ShellCompleter:
-    def complete(self, completer, *a, **kw):
-        if not hasattr(self, completer):
-            print("Warning: ShellCompleter: Falling back from `%s` to `none`" % (completer,), file=sys.stderr)
-            completer = 'none'
+    def complete(self, completion, *a, **kw):
+        if not hasattr(self, completion):
+            print("Warning: ShellCompleter: Falling back from `%s` to `none`" % (completion,), file=sys.stderr)
+            completion = 'none'
 
-        return getattr(self, completer)(*a, **kw)
+        return getattr(self, completion)(*a, **kw)
 
     def fallback(self, from_, to, *a, **kw):
         print("Warning: ShellCompleter: Falling back from `%s` to `%s`" % (from_, to), file=sys.stderr)

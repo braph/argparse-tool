@@ -103,7 +103,7 @@ def complete_action(parser, action):
             description = action.help,
             takes_args = action.takes_args(),
             metavar = action.get_metavar(),
-            action = complete(*shell.action_get_completer(action)))
+            action = complete(*shell.action_get_completion(action)))
 
     elif action.is_SubParsersAction():
         choices = {}
@@ -114,7 +114,7 @@ def complete_action(parser, action):
     else:
         return ":%s:%s" % (
             shell.escape(escape_colon(action.help)) if action.help else '',
-            complete(*shell.action_get_completer(action)))
+            complete(*shell.action_get_completion(action)))
 
 def generate_completion_function(parser, funcname):
     args = []
