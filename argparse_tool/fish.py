@@ -169,7 +169,8 @@ def complete_parser(parser, program_name, parent_commands=[]):
             description    = subparser.get_help(),
             choices        = [name],
             seen_words     = parent_commands,
-            not_seen_words = sorted(parser.get_subparsers().keys())
+            #not_seen_words = sorted(parser.get_subparsers().keys()),
+            positional     = parser.get_positional_num(parser.get_subparsers_action())
             # we only want to complete a subparsers `name` if it is not yet given on commandline
         ) + '\n'
 

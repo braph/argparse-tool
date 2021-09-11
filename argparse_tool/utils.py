@@ -158,6 +158,12 @@ def parser_get_positional_num(parser, action):
 
     return positionals.index(action) + 1
 
+def parser_get_subparsers_action(parser):
+    for a in parser._actions:
+        if isinstance(a, argparse._SubParsersAction):
+            return a
+    return None
+
 def parser_get_subparsers(parser):
     for a in parser._actions:
         if isinstance(a, argparse._SubParsersAction):
@@ -174,4 +180,5 @@ p.get_option_strings             = parser_get_option_strings
 p.get_positionals                = parser_get_positionals
 p.get_positional_num             = parser_get_positional_num
 p.get_subparsers                 = parser_get_subparsers
+p.get_subparsers_action          = parser_get_subparsers_action
 
