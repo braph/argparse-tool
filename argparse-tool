@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-import sys, os, argparse, importlib
+import sys, os, argparse, importlib, tempfile
 from argparse_tool import utils, zsh, bash, fish, printf, man, markdown
 
-p = argparse.ArgumentParser('argany', 'Generate shell completions and documentation using python argparse')
+p = argparse.ArgumentParser('argparse-tool', 'Generate shell completions and documentation using python argparse')
 p.add_argument('action')
 p.add_argument('program_file')
 p.add_argument('--parser_variable', default=None, help='Specify parser variable')
@@ -12,7 +12,7 @@ p.add_argument('--program_name',    default=None, help='Program name')
 
 # We use an unique object name for avoinding name clashes when
 # importing/executing the foreign python script
-_argany_argument_parser = p
+_argparse_tool_argument_parser = p
 del p
 
 def close_output_streams():
@@ -27,7 +27,7 @@ def find_ArgumentParser(module):
 
     for obj_name in dir(module):
         obj = getattr(module, obj_name)
-        if isinstance(obj, argparse.ArgumentParser) and obj is not _argany_argument_parser:
+        if isinstance(obj, argparse.ArgumentParser) and obj is not _argparse_tool_argument_parser:
             found_parsers.append(obj)
 
     if len(found_parsers) == 1:
@@ -42,7 +42,7 @@ def find_ArgumentParser(module):
     return None
 
 def execute_file(file):
-    # "Import" file using exec
+    ''' Import file using exec '''
 
     import __main__
 
@@ -59,13 +59,23 @@ def execute_file(file):
     return __main__
 
 def import_file(file):
-    # Import file using importlib
+    ''' Import file using importlib '''
 
     directory, file = os.path.split(file)
-    if file.endswith('.py'):
+    if file.lower().endswith('.py'):
         file = file[:-3]
+    else:
+        temp = tempfile.NamedTemporaryFile(mode='w', suffix='.py')
+        with open(file, 'r') as fh:
+            temp.file.write(fh.read())
+            temp.flush()
+
+        directory, file = os.path.split(temp.name)
+        file = file[:-3]
+        
     if not directory:
         directory = '.'
+
     if directory not in sys.path:
         sys.path.append(directory)
 
@@ -75,6 +85,7 @@ def generate(opts):
     try:
         module = import_file(opts.program_file)
     except Exception as e:
+        print(e)
         print("Warning: failed to load `%s` using importlib, falling back to `exec`" % opts.program_file, file=sys.stderr)
         module = execute_file(opts.program_file)
 
@@ -109,7 +120,7 @@ def generate(opts):
         print(r)
 
 try:
-    opts = _argany_argument_parser.parse_args()
+    opts = _argparse_tool_argument_parser.parse_args()
     generate(opts)
 except Exception as e:
     print('Error:', e, file=sys.stderr)

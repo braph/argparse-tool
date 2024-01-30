@@ -24,6 +24,7 @@ argp.add_argument('--choices',    help='Complete from choices', choices=(1,'two 
 argp.add_argument('-f', '--flag', help='A option flag', action='store_true')
 argp.add_argument('--range',      help='Complete a range', type=int, choices=range(1,9,2))
 argp.add_argument('--integer',    help='Option with integer', type=int)
+argp.add_argument('-a', '-A', '--argument')
 argp.add_argument('--single-quote-in-description',  help="Here is a single quote: '")
 argp.add_argument('--double-quote-in-description',  help='Here is a double quote: "')
 argp.add_argument('--special-chars-in-description', help='Here are some special chars: $(echo \'\\"`ls`")')
