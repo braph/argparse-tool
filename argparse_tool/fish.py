@@ -118,14 +118,9 @@ def make_complete(
 
     return 'complete -c ' + shell.escape(program_name) + flags + r
 
-def complete_action(parser, action, program_name, parent_commands=[]):
-    positional = None
-
-    if not action.option_strings:
-        positional = parser.get_positional_num(action)
-
+def complete_option(action, program_name, parent_commands=[]):
     completer = FishCompleter()
-    completion_args = completer.complete(*shell.action_get_completion(action))
+    completion_args = completer.complete(*action.complete)
 
     flags = set() # Drop '-f' and add it to flags
     if len(completion_args) and completion_args[0] == '-f':
@@ -134,17 +129,59 @@ def complete_action(parser, action, program_name, parent_commands=[]):
 
     r = make_complete(
         program_name,
-        requires_argument   = action.requires_args(),
+        requires_argument   = action.takes_args,
         description         = action.help,
         seen_words          = parent_commands,
-        positional          = positional,
+        positional          = None,
         short_options       = action.get_short_options(),
         long_options        = action.get_long_options(),
-        conflicting_options = parser.get_conflicting_option_strings(action),
+        conflicting_options = action.get_conflicting_options(),
         flags               = flags
     )
 
     return (r + ' ' + ' '.join(completion_args)).rstrip()
+
+def complete_positional(action, program_name, parent_commands=[]):
+    completer = FishCompleter()
+    completion_args = completer.complete(*action.complete)
+
+    flags = set() # Drop '-f' and add it to flags
+    if len(completion_args) and completion_args[0] == '-f':
+        flags.add('f')
+        completion_args.pop(0)
+
+    r = make_complete(
+        program_name,
+        requires_argument   = action.takes_args,
+        description         = action.help,
+        seen_words          = parent_commands,
+        positional          = action.get_positional_num(),
+        flags               = flags
+    )
+
+    return (r + ' ' + ' '.join(completion_args)).rstrip()
+
+def complete_subparsers(action, program_name, parent_commands=[]):
+    r = ''
+
+    for name, subparser in action.subcommands.items():
+        # Here we add the subcommand including its description
+        r += f'# command {name}\n'
+        r += make_complete(
+            program_name,
+            no_files       = True,
+            description    = subparser.help,
+            choices        = [name],
+            seen_words     = parent_commands,
+            #not_seen_words = sorted(parser.get_subparsers().keys()),
+            positional     = action.get_positional_num()
+            # we only want to complete a subparsers `name` if it is not yet given on commandline
+        ) + '\n'
+
+        # Recursive call to generate completion for a subcommand.
+        r += complete_parser(subparser, program_name, parent_commands + [name])
+
+    return r
 
 def complete_parser(parser, program_name, parent_commands=[]):
     # `parent_commands` is used to ensure that options of a command only show up
@@ -152,30 +189,14 @@ def complete_parser(parser, program_name, parent_commands=[]):
 
     r = ''
 
-    # First, we complete all actions for the current parser.
-    for action in parser._actions:
-        # Subcommands are handeled below...
-        if action.is_SubParsersAction():
-            continue
+    for action in parser.get_options():
+        r += '%s\n' % complete_option(action, program_name, parent_commands)
 
-        r += '%s\n' % complete_action(parser, action, program_name, parent_commands)
+    for action in parser.get_positionals():
+        r += '%s\n' % complete_positional(action, program_name, parent_commands)
 
-    for name, subparser in parser.get_subparsers().items():
-        # Here we add the subcommand including its description
-        r += f'# command {name}\n'
-        r += make_complete(
-            program_name,
-            no_files       = True,
-            description    = subparser.get_help(),
-            choices        = [name],
-            seen_words     = parent_commands,
-            #not_seen_words = sorted(parser.get_subparsers().keys()),
-            positional     = parser.get_positional_num(parser.get_subparsers_action())
-            # we only want to complete a subparsers `name` if it is not yet given on commandline
-        ) + '\n'
-
-        # Recursive call to generate completion for a subcommand.
-        r += complete_parser(subparser, program_name, parent_commands + [name])
+    if parser.get_subparsers_option():
+        r += complete_subparsers(parser.get_subparsers_option(), program_name, parent_commands)
 
     return r
 

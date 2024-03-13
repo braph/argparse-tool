@@ -62,9 +62,9 @@ def escape_colon(s):
 
 def make_argument_option_spec(
         option_strings,
-        conflicting_arguments=[],
+        conflicting_arguments = [],
         description = '',
-        takes_args=False,
+        takes_args = False,
         metavar = '',
         action = ''
     ):
@@ -95,46 +95,49 @@ def make_argument_option_spec(
 
     return f'{conflicting_arguments}{option_strings}{description}:{metavar}:{action}'
 
-def complete_action(parser, action):
-    if action.option_strings:
-        return make_argument_option_spec(
-            action.option_strings,
-            conflicting_arguments = parser.get_conflicting_option_strings(action),
-            description = action.help,
-            takes_args = action.takes_args(),
-            metavar = action.get_metavar(),
-            action = complete(*shell.action_get_completion(action)))
+def complete_option(option):
+    return make_argument_option_spec(
+        option.option_strings,
+        conflicting_arguments = option.get_conflicting_options(),
+        description = option.help,
+        takes_args = option.takes_args,
+        metavar = option.metavar,
+        action = complete(*option.complete))
 
-    elif action.is_SubParsersAction():
-        choices = {}
-        for name, subparser in parser.get_subparsers().items():
-            choices[name] = subparser.get_help()
-        return ":command:" + complete('choices', choices)
-        #return "':command:%s'" % shell.make_subparser_identifier(parser.prog)
-    else:
-        return ":%s:%s" % (
-            shell.escape(escape_colon(action.help)) if action.help else '',
-            complete(*shell.action_get_completion(action)))
+def complete_subparsers(option):
+    choices = {}
+    for name, subparser in option.subcommands.items():
+        choices[name] = subparser.help
+    return ":command:" + complete('choices', choices)
+    #return "':command:%s'" % shell.make_subparser_identifier(parser.prog)
 
-def generate_completion_function(parser, funcname):
+def complete_positional(option):
+    return ":%s:%s" % (
+        shell.escape(escape_colon(option.help)) if option.help else '',
+        complete(*option.complete))
+
+def generate_completion_function(options, funcname):
     args = []
     trailing_functions = ''
     r =  f'{funcname}() {{\n'
 
-    for action in parser._actions:
-        args.append(complete_action(parser, action))
+    for option in options.get_options():
+        args.append(complete_option(option))
 
-    if len(parser.get_subparsers()):
+    for option in options.get_positionals():
+        args.append(complete_positional(option))
+
+    if options.get_subparsers_option():
+        args.append(complete_subparsers(options.get_subparsers_option()))
         args.append("'*::arg:->args'")
 
     if len(args):
         r += '  _arguments \\\n    %s\n' % '\\\n    '.join(args)
 
-    subparsers = parser.get_subparsers()
-    if len(subparsers):
+    if options.get_subparsers_option():
         r += '  for w in $line; do\n'
         r += '    case $w in\n'
-        for name, subparser in subparsers.items():
+        for name, subparser in options.get_subparsers_option().subcommands.items():
             sub_funcname = shell.make_identifier(f'_{funcname}_{name}')
             trailing_functions += generate_completion_function(subparser, sub_funcname)
             r += f'      ({name}) {sub_funcname}; break;;\n'
@@ -144,12 +147,12 @@ def generate_completion_function(parser, funcname):
 
     return r + trailing_functions
 
-def generate_completion(parser, program_name=None):
+def generate_completion(options, program_name=None):
     if program_name is None:
-        program_name = parser.prog
+        program_name = options.prog
 
     completion_funcname = '_' + shell.make_identifier(program_name)
-    completion_functions = generate_completion_function(parser, completion_funcname)
+    completion_functions = generate_completion_function(options, completion_funcname)
 
     return f'''\
 #compdef {program_name}

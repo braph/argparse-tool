@@ -81,7 +81,7 @@ class BashCompleter(shell.ShellCompleter):
 complete = BashCompleter().complete
 
 def complete_action(action, append=True):
-    r = complete(*shell.action_get_completion(action))
+    r = complete(*action.complete)
     return r.to_shell(append)
 
 def make_switch_case_pattern(strings):
@@ -168,7 +168,7 @@ def complete_parser(parser, funcname):
     if len(positionals):
         r += '  case $args in\n' # $args is the number of args
         for action in positionals:
-            r += '    %d) %s\n' % (parser.get_positional_num(action), complete_action(action))
+            r += '    %d) %s\n' % (action.get_positional_num(), complete_action(action))
             r += '       return 0;;\n'
         r += '  esac\n'
         r += '\n'
@@ -182,13 +182,13 @@ def complete_parser(parser, funcname):
 
     return r
 
-def generate_completion(parser, program_name=None):
+def generate_completion(options, program_name=None):
     if program_name is None:
-        program_name = parser.prog
+        program_name = options.prog
 
     funcname = shell.make_identifier('_'+program_name)
     r  = '#!/bin/bash\n\n'
-    r += complete_parser(parser, funcname).rstrip()
+    r += complete_parser(options, funcname).rstrip()
     r += '\n\n'
     r += 'complete -F %s %s' % (funcname, program_name)
     return r
