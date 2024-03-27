@@ -6,6 +6,10 @@ from . import shell, utils
 #_filedir '@(?(d)patch|dif?(f))'
 #compgen -F
 
+# TODO: use indent instead of '      %s'
+#            if code:
+#                s += '       %s\n' % code
+
 class BashCompletionCommand:
     ''' Used for completion functions that internally modify COMPREPLY '''
     def __init__(self, cmd):
@@ -84,16 +88,23 @@ def complete_action(action, append=True):
     r = complete(*action.complete)
     return r.to_shell(append)
 
-def make_switch_case_pattern(strings):
-    return '|'.join(map(shell.escape, sorted(strings)))
+def make_switch_case_pattern(option_strings):
+    r = []
+    for option_string in sorted(option_strings):
+        if option_string.startswith('--'):
+            r.append(shell.escape(option_string))
+        else:
+            r.append('-!(-*)' + shell.escape(option_string[1]))
+
+    return '|'.join(r)
 
 def make_optstring_test_pattern(option_strings):
-    # Return the smallest pattern for matching option_strings [[ $string == $pattern ]]
+    # Return the smallest pattern for matching option_strings
 
     option_strings = list(sorted(option_strings))
 
     if len(option_strings) == 0:
-        return '' # TODO?
+        return ''
 
     if len(option_strings) == 1:
         return option_strings[0]
@@ -121,7 +132,7 @@ def complete_parser(parser, funcname):
     funcname    = shell.make_identifier(funcname)
     options     = parser.get_options()
     positionals = parser.get_positionals()
-    subparsers  = parser.get_subparsers()
+    subparsers  = parser.get_subparsers_option()
 
     r  = f'{funcname}() {{\n'
 
@@ -132,20 +143,11 @@ def complete_parser(parser, funcname):
         r += '  _init_completion -s || return\n'
         r += '\n'
 
-        if len(positionals):
+        if len(positionals) or subparsers:
             # The call to _count_args allows us to complete positionals later using $args.
+            # TODO: count args for subparsers.
             option_strings = parser.get_option_strings(only_with_arguments=True)
             r += '  _count_args "" "%s"\n' % make_optstring_test_pattern(option_strings)
-
-    if len(subparsers):
-        r += '  for w in "${COMP_WORDS[@]}"; do\n'
-        r += '    case "$w" in\n'
-        for name in subparsers.keys():
-            f = shell.make_identifier('_%s_%s' % (parser.prog, name))
-            r += '      %s) %s && return 0;;\n' % (shell.escape(name), f)
-        r += '    esac\n'
-        r += '  done\n'
-        r += '\n'
 
     if len(options):
         s = ''
@@ -165,20 +167,34 @@ def complete_parser(parser, funcname):
     r += '  [[ "$cur" = -* ]] && %s\n' % complete('choices', parser.get_all_optstrings()).to_shell(True)
     r += '\n'
 
-    if len(positionals):
+    if len(positionals) or subparsers:
         r += '  case $args in\n' # $args is the number of args
         for action in positionals:
             r += '    %d) %s\n' % (action.get_positional_num(), complete_action(action))
             r += '       return 0;;\n'
+        if subparsers:
+            r += '    %d) %s\n' % (subparsers.get_positional_num(), complete_action(subparsers))
+            r += '       return 0;;\n'
         r += '  esac\n'
+        r += '\n'
+
+    if subparsers:
+        r += '  for w in "${COMP_WORDS[@]}"; do\n'
+        r += '    case "$w" in\n'
+        for name in subparsers.subcommands.keys():
+            f = shell.make_identifier('_%s_%s' % (parser.prog, name))
+            r += '      %s) %s && return 0;;\n' % (shell.escape(name), f)
+        r += '    esac\n'
+        r += '  done\n'
         r += '\n'
 
     r += '  return 1\n'
     r += '}\n\n'
 
-    for name, sub in subparsers.items():
-        f = shell.make_identifier('_%s_%s' % (parser.prog, name))
-        r += complete_parser(sub, f)
+    if subparsers:
+        for name, sub in subparsers.subcommands.items():
+            funcname = shell.make_identifier('_%s_%s' % (parser.prog, name))
+            r += complete_parser(sub, funcname)
 
     return r
 
@@ -186,9 +202,8 @@ def generate_completion(options, program_name=None):
     if program_name is None:
         program_name = options.prog
 
-    funcname = shell.make_identifier('_'+program_name)
-    r  = '#!/bin/bash\n\n'
-    r += complete_parser(options, funcname).rstrip()
+    funcname = shell.make_identifier('_' + program_name)
+    r  = complete_parser(options, funcname).rstrip()
     r += '\n\n'
     r += 'complete -F %s %s' % (funcname, program_name)
     return r

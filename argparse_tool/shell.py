@@ -22,24 +22,24 @@ def escape(s, escape_empty_string=True):
 def make_subparser_identifier(s):
     return make_identifier(f'_{s}_subcommands')
 
-def action_get_completion(action):
-    if hasattr(action, 'completion'):
-        return getattr(action, 'completion')
-
-    if action.choices:
-        if isinstance(action.choices, (list, tuple, set, dict)):
-            return ('choices', action.choices)
-
-        if isinstance(action.choices, range):
-            return ('range', action.choices)
-
-        raise Exception("Unknown type for choices: %r" % type(action.choices))
-
-    if action.takes_args():
-        if action.type not in (int, float):
-            return ('file',)
-
-    return ('none',)
+#def action_get_completion(action):
+#    if hasattr(action, 'completion'):
+#        return getattr(action, 'completion')
+#
+#    if action.choices:
+#        if isinstance(action.choices, (list, tuple, set, dict)):
+#            return ('choices', action.choices)
+#
+#        if isinstance(action.choices, range):
+#            return ('range', action.choices)
+#
+#        raise Exception("Unknown type for choices: %r" % type(action.choices))
+#
+#    if action.takes_args():
+#        if action.type not in (int, float):
+#            return ('file',)
+#
+#    return ('none',)
 
 class ShellCompleter:
     def complete(self, completion, *a, **kw):

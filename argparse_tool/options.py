@@ -3,8 +3,6 @@
 import sys
 from collections import OrderedDict
 
-# TODO: what about empty option strings?
-
 class OptionStrings(list):
     def __init__(self, option_strings):
         if isinstance(option_strings, str):
@@ -12,19 +10,22 @@ class OptionStrings(list):
         else:
             super().__init__(option_strings)
 
-        num_positionals = 0
         num_options = 0
+        num_positionals = 0
         for option_string in self:
             if option_string.startswith('-'):
                 num_options += 1
             else:
                 num_positionals += 1
 
+        if num_positionals == 0 and num_options == 0:
+            raise Exception('Empty option string')
+
         if num_positionals and num_options:
-            raise Exception('Positional arguments and options cannot be mixed')
+            raise Exception('Positional arguments and options cannot be mixed: %r' % self)
 
         if num_positionals > 1:
-            raise Exception('Can only store one positional argument')
+            raise Exception('Can only store one positional argument: %r' % self)
 
     def is_positional(self):
         return not self[0].startswith('-')
@@ -47,7 +48,10 @@ class Options:
 
     def add(self, option_strings, metavar='', help='', complete=None, takes_args=True):
         option = Option(self, option_strings, metavar=metavar, help=help, complete=complete, takes_args=takes_args)
-        self.options.append(option)
+        if option.option_strings.is_option():
+            self.options.append(option)
+        else:
+            self.positionals.append(option)
 
     def add_mutually_exclusive_group(self):
         group = MutuallyExclusiveGroup(self)
@@ -55,14 +59,7 @@ class Options:
 
     def add_subparsers(self, name='command', help=''):
         self.subparsers = SubparsersOption(self, name, help)
-        self.options.append(self.subparsers)
         return self.subparsers
-
-    def get_subparsers(self):
-        for option in self.options:
-            if option.is_subparser():
-                return option.subcommands
-        return {}
 
     def get_subparsers_option(self):
         return self.subparsers
@@ -70,7 +67,7 @@ class Options:
     def get_options(self, only_with_arguments=False):
         result = []
         for o in self.options:
-            if o.option_strings.is_option() and (only_with_arguments is False or o.takes_args):
+            if only_with_arguments is False or o.takes_args:
                 result.append(o)
         return result
 
@@ -85,16 +82,15 @@ class Options:
     def get_all_optstrings(self):
         option_strings = []
         for o in self.options:
-            if o.is_option():
-                option_strings.extend(o.option_strings)
+            option_strings.extend(o.option_strings)
         return option_strings
 
-    def get_positionals(self): # TODO
-        return [o for o in self.options if o.is_positional() and not o.is_subparser()]
+    def get_positionals(self):
+        return list(self.positionals)
 
     def __repr__(self):
-        return '{\nprog: %r,\nhelp: %r,\noptions: %r}' % (
-            self.prog, self.help, self.options)
+        return '{\nprog: %r,\nhelp: %r,\noptions: %r,\npositionals: %r,\nsubparsers: %r}' % (
+            self.prog, self.help, self.options, self.positionals, self.subparsers)
 
 class Option:
     def __init__(self, parent, option_strings, metavar='', help='', complete=None, exclusive_group=None, takes_args=True):
@@ -112,34 +108,22 @@ class Option:
     def get_options(self):
         return self.option_strings
 
-    def is_option(self):
-        return self.option_strings.is_option()
-
-    def is_positional(self):
-        return self.option_strings.is_positional()
-
-    def is_subparser(self):
-        return False
-
-    def takes_args(self):
-        return (self.complete != None)
-
     def get_short_options(self):
-        # TODO?
-        return list(sorted([o for o in self.option_strings if not o.startswith('--')]))
+        return sorted([o for o in self.option_strings if not o.startswith('--')])
 
     def get_long_options(self):
-        return list(sorted([o for o in self.option_strings if o.startswith('--')]))
+        return sorted([o for o in self.option_strings if o.startswith('--')])
 
     def get_conflicting_options(self):
         if not self.group:
             return []
-        options = self.group.get_all_options()
+        option_strings = self.group.get_all_options()
         for option in self.option_strings:
-            options.remove(option)
-        return options
+            option_strings.remove(option)
+        return option_strings
 
     def get_positional_num(self):
+        # TODO: check logic
         positionals = []
 
         parser = self.parent
@@ -158,19 +142,18 @@ class Option:
         return positionals.index(self) + 1
 
     def __repr__(self):
+        # TODO
         return '{option_strings: %r, metavar: %r, help: %r}' % (
             self.option_strings, self.metavar, self.help)
 
 class SubparsersOption(Option):
     def __init__(self, parent, name, help):
+        # TODO
         self.parent = parent
         self.subcommands = OrderedDict()
         self.help  = ''
         self.option_strings = OptionStrings([name])
-        self.complete = ('choices', [])
-
-    def is_subparser(self):
-        return True
+        self.complete = ('choices', []) # TODO
 
     def add_options_object(self, options):
         options.parent = self.parent
@@ -208,8 +191,7 @@ class MutuallyExclusiveGroup:
     def get_all_options(self):
         r = []
         for option in self.options:
-            for option_string in option.option_strings:
-                r.append(option_string)
+            r.extend(option.option_strings)
         return r
         
 import argparse

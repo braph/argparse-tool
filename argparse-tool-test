@@ -21,8 +21,8 @@ argp.add_argument('--hostname',   help='Complete a hostname').complete('hostname
 argp.add_argument('--variable',   help='Complete a variable').complete('variable')
 argp.add_argument('--service',    help='Complete a service').complete('service')
 argp.add_argument('--choices',    help='Complete from choices', choices=(1,'two and a half',3))
-argp.add_argument('-f', '--flag', help='A option flag', action='store_true')
 argp.add_argument('--range',      help='Complete a range', type=int, choices=range(1,9,2))
+argp.add_argument('-f', '--flag', help='A option flag', action='store_true') # TODO: remove me
 argp.add_argument('--integer',    help='Option with integer', type=int)
 argp.add_argument('-a', '-A', '--argument')
 argp.add_argument('--single-quote-in-description',  help="Here is a single quote: '")
